@@ -1,173 +1,176 @@
-# -*- coding: utf-8 -*-
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-import hashlib
-import hmac
-import time
-import urlparse
-from lxml import objectify
+from unittest.mock import patch
 
-import openerp
-from openerp.addons.payment.models.payment_acquirer import ValidationError
-from openerp.addons.payment.tests.common import PaymentAcquirerCommon
-from openerp.addons.payment_authorize.controllers.main import AuthorizeController
-from openerp.tools import mute_logger
+import requests
 
+from odoo.exceptions import ValidationError
+from odoo.tests import tagged
+from odoo.tools import mute_logger
 
-@openerp.tests.common.at_install(True)
-@openerp.tests.common.post_install(True)
-class AuthorizeCommon(PaymentAcquirerCommon):
-
-    def setUp(self):
-        super(AuthorizeCommon, self).setUp()
-        self.base_url = self.env['ir.config_parameter'].get_param('web.base.url')
-        # authorize only support USD in test environment
-        self.currency_usd = self.env['res.currency'].search([('name', '=', 'USD')], limit=1)[0]
-        # get the authorize account
-        model, self.authorize_id = self.env['ir.model.data'].get_object_reference('payment_authorize', 'payment_acquirer_authorize')
+from odoo.addons.payment import utils as payment_utils
+from odoo.addons.payment_authorize.models.authorize_request import AuthorizeAPI
+from odoo.addons.payment_authorize.tests.common import AuthorizeCommon
 
 
-@openerp.tests.common.at_install(True)
-@openerp.tests.common.post_install(True)
-class AuthorizeForm(AuthorizeCommon):
+@tagged("post_install", "-at_install")
+class AuthorizeTest(AuthorizeCommon):
+    def test_available_providers(self):
+        # Note: in the test common, 'USD' is specified as the currency linked to the user account.
+        unsupported_currency = self._enable_currency("CHF")
+        providers = self.env["payment.provider"]._find_available_providers(
+            self.company.id, self.partner.id, self.amount, currency_id=unsupported_currency.id
+        )
+        self.assertNotIn(self.authorize, providers)
+        providers = self.env["payment.provider"]._find_available_providers(
+            self.company.id, self.partner.id, self.amount, currency_id=self.currency_usd.id
+        )
+        self.assertIn(self.authorize, providers)
 
-    def _authorize_generate_hashing(self, values):
-        data = '^'.join([
-            values['x_login'],
-            values['x_fp_sequence'],
-            values['x_fp_timestamp'],
-            values['x_amount'],
-        ]) + '^'
-        return hmac.new(str(values['x_trans_key']), data, hashlib.md5).hexdigest()
+    def test_processing_values(self):
+        """Test custom 'access_token' processing_values for authorize provider."""
+        tx = self._create_transaction(flow="direct")
+        with (
+            mute_logger("odoo.addons.payment.models.payment_transaction"),
+            patch(
+                "odoo.addons.payment.utils.generate_access_token",
+                new=self._generate_test_access_token,
+            ),
+        ):
+            processing_values = tx._get_processing_values()
 
-    def test_10_Authorize_form_render(self):
-        authorize = self.env['payment.acquirer'].browse(self.authorize_id)
-        self.assertEqual(authorize.environment, 'test', 'test without test environment')
-
-        # ----------------------------------------
-        # Test: button direct rendering
-        # ----------------------------------------
-        form_values = {
-            'x_login': authorize.authorize_login,
-            'x_trans_key': authorize.authorize_transaction_key,
-            'x_amount': '320.0',
-            'x_show_form': 'PAYMENT_FORM',
-            'x_type': 'AUTH_CAPTURE',
-            'x_method': 'CC',
-            'x_fp_sequence': '%s%s' % (authorize.id, int(time.time())),
-            'x_version': '3.1',
-            'x_relay_response': 'TRUE',
-            'x_fp_timestamp': str(int(time.time())),
-            'x_relay_url': '%s' % urlparse.urljoin(self.base_url, AuthorizeController._return_url),
-            'x_cancel_url': '%s' % urlparse.urljoin(self.base_url, AuthorizeController._cancel_url),
-            'return_url': None,
-            'x_currency_code': 'USD',
-            'x_invoice_num': 'SO004',
-            'x_first_name': 'Norbert',
-            'x_last_name': 'Buyer',
-            'x_address': 'Huge Street 2/543',
-            'x_city': 'Sin City',
-            'x_zip': '1000',
-            'x_country': 'Belgium',
-            'x_phone': '0032 12 34 56 78',
-            'x_email': 'norbert.buyer@example.com',
-            'x_state': None,
-        }
-
-        form_values['x_fp_hash'] = self._authorize_generate_hashing(form_values)
-        # render the button
-        cr, uid, context = self.env.cr, self.env.uid, {}
-        res = self.payment_acquirer.render(
-            cr, uid, self.authorize_id, 'SO004', 320.0, self.currency_usd.id,
-            values=self.buyer_values, context=context)
-        # check form result
-        tree = objectify.fromstring(res)
-        self.assertEqual(tree.get('action'), 'https://test.authorize.net/gateway/transact.dll', 'Authorize: wrong form POST url')
-        for form_input in tree.input:
-            # Generated and received 'x_fp_hash' are always different so skeep it.
-            if form_input.get('name') in ['submit', 'x_fp_hash']:
-                continue
-            self.assertEqual(
-                form_input.get('value'),
-                form_values[form_input.get('name')],
-                'Authorize: wrong value for input %s: received %s instead of %s' % (form_input.get('name'), form_input.get('value'), form_values[form_input.get('name')])
+        with patch(
+            "odoo.addons.payment.utils.generate_access_token", new=self._generate_test_access_token
+        ):
+            self.assertTrue(
+                payment_utils.check_access_token(
+                    processing_values["access_token"], self.reference, self.partner.id
+                )
             )
 
-    @mute_logger('openerp.addons.payment_authorize.models.authorize', 'ValidationError')
-    def test_20_authorize_form_management(self):
-        cr, uid, context = self.env.cr, self.env.uid, {}
-        # be sure not to do stupid thing
-        authorize = self.env['payment.acquirer'].browse(self.authorize_id)
-        self.assertEqual(authorize.environment, 'test', 'test without test environment')
+    def test_validation(self):
+        self.assertEqual(self.authorize.available_currency_ids[0], self.currency_usd)
+        self.assertEqual(self.authorize._get_validation_amount(), 0.01)
+        self.assertEqual(self.authorize._get_validation_currency(), self.currency_usd)
 
-        # typical data posted by authorize after client has successfully paid
-        authorize_post_data = {
-            'return_url': u'/shop/payment/validate',
-            'x_MD5_Hash': u'7934485E1C105940BE854208D10FAB4F',
-            'x_account_number': u'XXXX0027',
-            'x_address': u'Huge Street 2/543',
-            'x_amount': u'320.00',
-            'x_auth_code': u'E4W7IU',
-            'x_avs_code': u'Y',
-            'x_card_type': u'Visa',
-            'x_cavv_response': u'2',
-            'x_city': u'Sun City',
-            'x_company': u'',
-            'x_country': u'Belgium',
-            'x_cust_id': u'',
-            'x_cvv2_resp_code': u'',
-            'x_description': u'',
-            'x_duty': u'0.00',
-            'x_email': u'norbert.buyer@exampl',
-            'x_fax': u'',
-            'x_first_name': u'Norbert',
-            'x_freight': u'0.00',
-            'x_invoice_num': u'SO004',
-            'x_last_name': u'Buyer',
-            'x_method': u'CC',
-            'x_phone': u'0032 12 34 56 78',
-            'x_po_num': u'',
-            'x_response_code': u'1',
-            'x_response_reason_code': u'1',
-            'x_response_reason_text': u'This transaction has been approved.',
-            'x_ship_to_address': u'Huge Street 2/543',
-            'x_ship_to_city': u'Sun City',
-            'x_ship_to_company': u'',
-            'x_ship_to_country': u'Belgium',
-            'x_ship_to_first_name': u'Norbert',
-            'x_ship_to_last_name': u'Buyer',
-            'x_ship_to_state': u'',
-            'x_ship_to_zip': u'1000',
-            'x_state': u'',
-            'x_tax': u'0.00',
-            'x_tax_exempt': u'FALSE',
-            'x_test_request': u'false',
-            'x_trans_id': u'2217460311',
-            'x_type': u'auth_capture',
-            'x_zip': u'1000'
+    def test_amount_validation_is_skipped_when_transaction_details_are_missing(self):
+        """Test that the amount validation is skipped when the API returns with an error."""
+        tx = self._create_transaction("direct")
+        with patch(
+            "odoo.addons.payment_authorize.models.authorize_request.AuthorizeAPI"
+            ".get_transaction_details",
+            return_value={"err_code": "E00040", "err_msg": "The record cannot be found."},
+        ):
+            amount_data = tx._extract_amount_data({
+                "response": {
+                    "x_response_code": "E00040",
+                    "x_response_reason_text": "The record cannot be found.",
+                }
+            })
+        self.assertEqual(amount_data, None)  # Amount validation is skipped.
+
+    @mute_logger('odoo.addons.payment_authorize.models.authorize_request')
+    def test_get_transaction_details_raises_on_timeout(self):
+        """Transport failures fetching details should raise ValidationError."""
+        authorize_api = AuthorizeAPI(self.authorize)
+        with patch(
+            'odoo.addons.payment_authorize.models.authorize_request.requests.post',
+            side_effect=requests.exceptions.Timeout(),
+        ):
+            with self.assertRaises(ValidationError):
+                authorize_api.get_transaction_details('60012345678')
+
+    def test_amount_validation_is_skipped_when_transaction_details_request_fails(self):
+        """Test that a ValidationError fetching details skips amount validation."""
+        tx = self._create_transaction('direct')
+        with patch(
+            'odoo.addons.payment_authorize.models.authorize_request.AuthorizeAPI'
+            '.get_transaction_details',
+            side_effect=ValidationError(''),
+        ):
+            amount_data = tx._extract_amount_data({
+                'response': {
+                    'x_response_code': '1',
+                    'x_trans_id': '60012345678',
+                },
+            })
+        self.assertEqual(amount_data, None)  # Amount validation is skipped.
+
+    def test_voiding_confirmed_tx_cancels_it(self):
+        """Test that voiding a transaction cancels it even if it's already confirmed."""
+        source_tx = self._create_transaction("direct", state="done")
+        with patch(
+            "odoo.addons.payment_authorize.models.authorize_request.AuthorizeAPI"
+            ".get_transaction_details",
+            return_value={"transaction": {"authAmount": self.amount}},
+        ):
+            source_tx.with_context(payment_safe_write=True)._apply_updates({
+                "response": {"x_response_code": "1", "x_type": "void"}
+            })
+        self.assertEqual(source_tx.state, "cancel")
+
+    @mute_logger("odoo.addons.payment_authorize.models.payment_transaction")
+    def test_extract_token_values_maps_fields_correctly(self):
+        tx = self._create_transaction("direct")
+        payment_data = {
+            "payment_details": "1234",
+            "payment_profile_id": "123456789",
+            "profile_id": "987654321",
         }
+        with patch(
+            "odoo.addons.payment_authorize.models.authorize_request.AuthorizeAPI"
+            ".create_customer_profile",
+            return_value=payment_data,
+        ):
+            token_values = tx._extract_token_values({})
+        self.assertDictEqual(
+            token_values,
+            {
+                "payment_details": "1234",
+                "provider_ref": "123456789",
+                "authorize_profile": "987654321",
+            },
+        )
 
-        # should raise error about unknown tx
-        with self.assertRaises(ValidationError):
-            self.payment_transaction.form_feedback(cr, uid, authorize_post_data, 'authorize', context=context)
+    def test_validation_tx_is_tokenized_before_being_voided(self):
+        """Test that the tokenization request is sent before the void request.
+        The customer profile can only be created from a transaction that has not been voided yet,
+        so the tokenization must happen before the validation transaction is voided.
+        """
+        self._disable_process_patcher()
+        tx = self._create_transaction("direct", operation="validation", tokenize=True)
+        call_order = []
 
-        tx = self.env['payment.transaction'].create({
-            'amount': 320.0,
-            'acquirer_id': self.authorize_id,
-            'currency_id': self.currency_usd.id,
-            'reference': 'SO004',
-            'partner_name': 'Norbert Buyer',
-            'partner_country_id': self.country_france_id})
-        # validate it
-        self.payment_transaction.form_feedback(cr, uid, authorize_post_data, 'authorize', context=context)
-        # check state
-        self.assertEqual(tx.state, 'done', 'Authorize: validation did not put tx into done state')
-        self.assertEqual(tx.acquirer_reference, authorize_post_data.get('x_trans_id'), 'Authorize: validation did not update tx payid')
+        def tokenize(*_args, **_kwargs):
+            call_order.append("tokenize")
+            tx.with_context(payment_safe_write=True).tokenize = False
 
-        # reset tx
-        tx.write({'state': 'draft', 'date_validate': False, 'acquirer_reference': False})
+        def void(*_args, **_kwargs):
+            call_order.append("void")
 
-        # simulate an error
-        authorize_post_data['x_response_code'] = u'3'
-        self.payment_transaction.form_feedback(cr, uid, authorize_post_data, 'authorize', context=context)
-        # check state
-        self.assertEqual(tx.state, 'error', 'Authorize: erroneous validation did not put tx into error state')
+        with (
+            patch(
+                "odoo.addons.payment.models.payment_transaction.PaymentTransaction._tokenize",
+                side_effect=tokenize,
+            ),
+            patch(
+                "odoo.addons.payment.models.payment_transaction.PaymentTransaction._void",
+                side_effect=void,
+            ),
+        ):
+            tx.with_context(payment_safe_write=True)._process({
+                "response": {
+                    "x_response_code": "1",
+                    "x_type": "auth_only",
+                    "x_trans_id": "test_trans_id",
+                }
+            })
+
+        self.assertEqual(call_order, ["tokenize", "void"])
+
+    def test_format_response_extracts_reason(self):
+        reason = "dummy reason"
+        response = AuthorizeAPI(self.authorize)._format_response(
+            {"transactionResponse": {"errors": [{"errorText": reason}]}}, "auth_only"
+        )
+        self.assertEqual(response["x_response_reason_text"], reason)

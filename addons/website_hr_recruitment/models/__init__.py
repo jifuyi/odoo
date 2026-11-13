@@ -1,3 +1,10 @@
-import hr_job
-import hr_recruitment_source
-import hr_applicant
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
+
+from . import hr_department
+from . import hr_job
+from . import hr_applicant
+from . import hr_recruitment_source
+from . import ir_model
+from . import website
+from . import website_page
+from . import website_published_multi_mixin

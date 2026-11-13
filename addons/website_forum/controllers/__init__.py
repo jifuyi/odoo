@@ -1,3 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import main
+from . import legacy
+from . import website
+from . import website_forum
+from . import website_mail

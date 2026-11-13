@@ -1,34 +1,99 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from openerp import models, fields, api
-import openerp.addons.decimal_precision as dp
+from odoo import api, fields, models
+from odoo.tools import format_amount
+
+VARIABLE_SELECTION = [
+    ("weight", "Weight"),
+    ("volume", "Volume"),
+    ("wv", "Weight * Volume"),
+    ("price", "Price"),
+    ("quantity", "Quantity"),
+]
 
 
-class PriceRule(models.Model):
+class DeliveryPriceRule(models.Model):
     _name = "delivery.price.rule"
     _description = "Delivery Price Rules"
-    _order = 'sequence, list_price'
+    _order = "sequence, list_price, id"
 
-    @api.depends('variable', 'operator', 'max_value', 'list_base_price', 'list_price', 'variable_factor')
-    def _get_name(self):
+    @api.depends(
+        "variable",
+        "operator",
+        "max_value",
+        "list_base_price",
+        "list_price",
+        "variable_factor",
+        "currency_id",
+    )
+    def _compute_name(self):
         for rule in self:
-            name = 'if %s %s %s then' % (rule.variable, rule.operator, rule.max_value)
-            if rule.list_base_price and not rule.list_price:
-                name = '%s fixed price %s' % (name, rule.list_base_price)
-            elif rule.list_price and not rule.list_base_price:
-                name = '%s %s times %s' % (name, rule.list_price, rule.variable_factor)
+            name = "if %s %s %.02f %s then" % (
+                rule.variable,
+                rule.operator,
+                rule.max_value,
+                rule.variable_unit or "",
+            )
+            if rule.currency_id:
+                base_price = format_amount(self.env, rule.list_base_price, rule.currency_id)
+                price = format_amount(self.env, rule.list_price, rule.currency_id)
             else:
-                name = '%s fixed price %s and %s times %s Extra' % (name, rule.list_base_price, rule.list_price, rule.variable_factor)
+                base_price = "%.2f" % rule.list_base_price
+                price = "%.2f" % rule.list_price
+            if rule.list_base_price and not rule.list_price:
+                name = "%s fixed price %s" % (name, base_price)
+            elif rule.list_price and not rule.list_base_price:
+                name = "%s %s times %s" % (name, price, rule.variable_factor)
+            else:
+                name = "%s fixed price %s plus %s times %s" % (
+                    name,
+                    base_price,
+                    price,
+                    rule.variable_factor,
+                )
             rule.name = name
 
-    name = fields.Char(compute='_get_name')
-    sequence = fields.Integer(required=True, help="Gives the sequence order when calculating delivery carrier.", default=10)
-    carrier_id = fields.Many2one('delivery.carrier', 'Carrier', required=True, ondelete='cascade')
-    variable = fields.Selection([('weight', 'Weight'), ('volume', 'Volume'), ('wv', 'Weight * Volume'), ('price', 'Price'), ('quantity', 'Quantity')], 'Variable', required=True, default='weight')
-    operator = fields.Selection([('==', '='), ('<=', '<='), ('<', '<'), ('>=', '>='), ('>', '>')], 'Operator', required=True, default='<=')
-    max_value = fields.Float('Maximum Value', required=True)
-    variable_factor = fields.Selection([('weight', 'Weight'), ('volume', 'Volume'), ('wv', 'Weight * Volume'), ('price', 'Price'), ('quantity', 'Quantity')], 'Variable Factor', required=True, default='weight')
-    list_base_price = fields.Float(string='Sale Base Price', digits=dp.get_precision('Product Price'), required=True, default=0.0)
-    list_price = fields.Float('Sale Price', digits=dp.get_precision('Product Price'), required=True, default=0.0)
-    standard_price = fields.Float('Cost Price', digits=dp.get_precision('Product Price'), required=True, default=0.0)
+    name = fields.Char(compute="_compute_name")
+    sequence = fields.Integer(required=True, default=10)
+    carrier_id = fields.Many2one(
+        comodel_name="delivery.carrier", ondelete="cascade", required=True, index=True
+    )
+    currency_id = fields.Many2one(related="carrier_id.currency_id")
+
+    variable = fields.Selection(selection=VARIABLE_SELECTION, default="quantity", required=True)
+    operator = fields.Selection(
+        selection=[("==", "="), ("<=", "<="), ("<", "<"), (">=", ">="), (">", ">")],
+        default="<=",
+        required=True,
+    )
+    max_value = fields.Float(string="Maximum Value", required=True)
+    variable_unit = fields.Char(compute="_compute_variable_unit")
+    list_base_price = fields.Float(
+        string="Sale Base Price", min_display_digits="Product Price", default=0.0, required=True
+    )
+    list_price = fields.Float(
+        string="Sale Price", min_display_digits="Product Price", default=0.0, required=True
+    )
+    variable_factor = fields.Selection(
+        selection=VARIABLE_SELECTION, default="weight", required=True
+    )
+
+    @api.depends(
+        "variable", "carrier_id.weight_uom_name", "carrier_id.volume_uom_name", "currency_id"
+    )
+    def _compute_variable_unit(self):
+        for rule in self:
+            carrier_id = rule.carrier_id
+            match rule.variable:
+                case "weight":
+                    rule.variable_unit = carrier_id.weight_uom_name
+                case "volume":
+                    rule.variable_unit = carrier_id.volume_uom_name
+                case "wv":
+                    rule.variable_unit = (
+                        f"{carrier_id.weight_uom_name} * {carrier_id.volume_uom_name}"
+                    )
+                case "price":
+                    rule.variable_unit = rule.currency_id.symbol or rule.currency_id.name or ""
+                case _:
+                    rule.variable_unit = False

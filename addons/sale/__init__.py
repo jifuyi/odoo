@@ -1,10 +1,33 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-import sale
-import sale_analytic
-import sales_team
-import res_partner
-import wizard
-import report
-import res_config
+from odoo.tools.misc import str2bool
+from odoo.tools.sql import SQL
+
+from . import const, controllers, models, report, wizard
+
+
+def _post_init_hook(env):
+    _synchronize_crons(env)
+    _setup_downpayment_account(env)
+    _setup_accrual_accounts(env)
+
+
+def _synchronize_crons(env):
+    for param, cron_xmlid in const.PARAM_CRON_MAPPING.items():
+        if cron := env.ref(cron_xmlid, raise_if_not_found=False):
+            cron.active = env["ir.config_parameter"].get_bool(param)
+
+
+def _setup_downpayment_account(env):
+    env["account.chart.template"]._load_pre_defined_data({
+        "res.company": {"downpayment_account_id"}
+    })
+
+
+def _setup_accrual_accounts(env):
+    env["account.chart.template"]._load_pre_defined_data({
+        "res.company": {
+            "account_invoices_to_issue_id",
+            "account_invoiced_not_delivered_id",
+        }
+    })

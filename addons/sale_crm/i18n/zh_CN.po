@@ -1,202 +1,171 @@
 # Translation of Odoo Server.
 # This file contains the translation of the following modules:
 # * sale_crm
-# 
+#
 # Translators:
-# Rona Lin <ssauapw@qq.com>, 2015
-# 卓忆科技 <zhanghao@jointd.com>, 2015
+# Martin Trigaux, 2022
+#
+# "Tiffany Chang (tic)" <tic@odoo.com>, 2025.
+# "Chloe Wang (chwa)" <chwa@odoo.com>, 2026.
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo 9.0\n"
+"Project-Id-Version: Odoo Server 15.5alpha1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2015-09-18 08:11+0000\n"
-"PO-Revision-Date: 2015-10-09 06:03+0000\n"
-"Last-Translator: 卓忆科技 <zhanghao@jointd.com>\n"
-"Language-Team: Chinese (China) (http://www.transifex.com/odoo/odoo-9/language/zh_CN/)\n"
+"POT-Creation-Date: 2026-09-04 17:46+0000\n"
+"PO-Revision-Date: 2026-09-09 14:11+0000\n"
+"Last-Translator: \"Chloe Wang (chwa)\" <chwa@odoo.com>\n"
+"Language-Team: Chinese (Simplified Han script) <https://translate.odoo.com/"
+"projects/odoo-master/sale_crm/zh_Hans/>\n"
+"Language: zh_CN\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
-"Language: zh_CN\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Weblate 2026.8.1\n"
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_claim_count
-msgid "# Claims"
-msgstr "# 投诉"
+#: model:ir.module.module,description:base.module_sale_crm
+msgid ""
+"\n"
+"This module adds a shortcut on one or several opportunity cases in the CRM.\n"
+"===========================================================================\n"
+"\n"
+"This shortcut allows you to generate a sales order based on the selected "
+"case.\n"
+"If different cases are open (a list), it generates one sales order by case.\n"
+"The case is then closed and linked to the generated sales order.\n"
+"\n"
+"We suggest you to install this module, if you installed both the sale and "
+"the crm\n"
+"modules.\n"
+msgstr ""
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_issue_count
-msgid "# Issues"
-msgstr "# 问题"
-
-#. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_task_count
-msgid "# Tasks"
-msgstr "# 任务"
-
-#. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_sale_order_count
-msgid "# of Sales Order"
-msgstr "销售订单的 #"
-
-#. module: sale_crm
-#: model:ir.ui.view,arch_db:sale_crm.crm_case_form_view_oppor
+#: model_terms:ir.ui.view,arch_db:sale_crm.crm_case_form_view_oppor
 msgid "<span class=\"o_stat_text\"> Orders</span>"
-msgstr "<span class=\"o_stat_text\"> 销售订单</span>"
+msgstr "<span class=\"o_stat_text\"> 订单</span>"
 
 #. module: sale_crm
-#: model:ir.ui.view,arch_db:sale_crm.crm_case_form_view_oppor
-msgid "<span class=\"o_stat_text\"> Quote(s) </span>"
-msgstr "<span class=\"o_stat_text\"> 报价单</span>"
+#: model:ir.model.fields,field_description:sale_crm.field_crm_quotation_partner__lead_id
+msgid "Associated Lead"
+msgstr "关联线索"
 
 #. module: sale_crm
-#: model:ir.model.fields,help:sale_crm.field_res_users_associate_member
-msgid ""
-"A member with whom you want to associate your membership.It will consider "
-"the membership state of the associated member."
-msgstr "你将作为哪个客户的附属会员。你的会员资格会随着主会员的状态变化。"
+#: model:ir.model.fields.selection,name:sale_crm.selection__crm_quotation_partner__action__create
+msgid "Create a new customer"
+msgstr "创建客户"
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_associate_member
-msgid "Associate Member"
-msgstr "附属会员"
+#: model:ir.model,website_form_label:sale_crm.model_crm_lead
+msgid "Create an Opportunity"
+msgstr "创建商机"
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_sale_order_campaign_id
-msgid "Campaign"
-msgstr "营销活动"
+#: model:ir.model,name:sale_crm.model_crm_quotation_partner
+msgid "Create new or use existing Customer on new Quotation"
+msgstr "在新报价上创建新客户或使用现有客户"
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_membership_cancel
-msgid "Cancel Membership Date"
-msgstr "取消会员日期"
+#: model:ir.model.fields,field_description:sale_crm.field_crm_quotation_partner__create_uid
+msgid "Created by"
+msgstr "创建人"
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_payment_method_count
-msgid "Count Payment Method"
-msgstr "统计付款的方法"
+#: model:ir.model.fields,field_description:sale_crm.field_crm_quotation_partner__create_date
+msgid "Created on"
+msgstr "创建日期"
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_membership_state
-msgid "Current Membership Status"
-msgstr "当前会员状态"
+#: model:ir.model.fields,field_description:sale_crm.field_crm_quotation_partner__partner_id
+msgid "Customer"
+msgstr "客户"
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_property_stock_customer
-msgid "Customer Location"
-msgstr "客户库位"
+#: model:ir.model.fields,field_description:sale_crm.field_crm_lead__display_name
+#: model:ir.model.fields,field_description:sale_crm.field_crm_quotation_partner__display_name
+#: model:ir.model.fields,field_description:sale_crm.field_crm_team__display_name
+#: model:ir.model.fields,field_description:sale_crm.field_sale_order__display_name
+msgid "Display Name"
+msgstr "显示名称"
 
 #. module: sale_crm
-#: model:ir.model.fields,help:sale_crm.field_res_users_membership_start
-msgid "Date from which membership becomes active."
-msgstr "会员资格开始生效的日期"
+#: model:ir.model.fields.selection,name:sale_crm.selection__crm_quotation_partner__action__nothing
+msgid "Do not link to a customer"
+msgstr "不要链接到某个客户"
 
 #. module: sale_crm
-#: model:ir.model.fields,help:sale_crm.field_res_users_membership_cancel
-msgid "Date on which membership has been cancelled"
-msgstr "退订会员资格的日期"
+#. odoo-python
+#: code:addons/sale_crm/models/crm_lead.py:0
+msgid "Expected revenue has been updated based on the linked Sales Orders."
+msgstr "已根据链接的销售订单更新了预期收入。"
 
 #. module: sale_crm
-#: model:ir.model.fields,help:sale_crm.field_res_users_membership_stop
-msgid "Date until which membership remains active."
-msgstr "会员资格到哪一天结束"
+#: model_terms:ir.ui.view,arch_db:sale_crm.crm_quotation_partner_view_form
+msgid "Go to Quotation"
+msgstr ""
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_free_member
-msgid "Free Member"
-msgstr "免费会员"
+#: model:ir.model.fields,field_description:sale_crm.field_crm_lead__id
+#: model:ir.model.fields,field_description:sale_crm.field_crm_quotation_partner__id
+#: model:ir.model.fields,field_description:sale_crm.field_crm_team__id
+#: model:ir.model.fields,field_description:sale_crm.field_sale_order__id
+msgid "ID"
+msgstr "ID"
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_partner_latitude
-msgid "Geo Latitude"
-msgstr "地理纬度"
+#: model:ir.model.fields,field_description:sale_crm.field_crm_quotation_partner__write_uid
+msgid "Last Updated by"
+msgstr "最后更新人"
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_date_localization
-msgid "Geo Localization Date"
-msgstr "geolocalization定位的日期"
-
-#. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_partner_longitude
-msgid "Geo Longitude"
-msgstr "geolocalization经度"
-
-#. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_target_sales_invoiced
-msgid "Invoiced in Sale Orders Target"
-msgstr "在销售订单预期目标上开票"
-
-#. module: sale_crm
-#: model:ir.model.fields,help:sale_crm.field_res_users_membership_state
-msgid ""
-"It indicates the membership state.\n"
-"-Non Member: A partner who has not applied for any membership.\n"
-"-Cancelled Member: A member who has cancelled his membership.\n"
-"-Old Member: A member whose membership date has expired.\n"
-"-Waiting Member: A member who has applied for the membership and whose invoice is going to be created.\n"
-"-Invoiced Member: A member whose invoice has been created.\n"
-"-Paying member: A member who has paid the membership fee."
-msgstr "它表明会员的状态。\n                    -非会员：业务伙伴没有申请任何会员。\n                    -取消会员：会员已取消他的会员资格。\n                    -过期会员:其成员日期已经过期。\n                    -未审核会员：已申请成为成员的人，他们的发票即将被创建。\n                    -开具发票的会员：会员的发票已创建。\n                    -付费会员：已支付会员费的会员。"
+#: model:ir.model.fields,field_description:sale_crm.field_crm_quotation_partner__write_date
+msgid "Last Updated on"
+msgstr "上次更新日期"
 
 #. module: sale_crm
 #: model:ir.model,name:sale_crm.model_crm_lead
-msgid "Lead/Opportunity"
-msgstr "线索/商机"
+msgid "Lead"
+msgstr "线索"
 
 #. module: sale_crm
-#: model:ir.ui.view,arch_db:sale_crm.sale_view_inherit123
-msgid "Log in the chatter from which opportunity the order originates"
-msgstr "登录到订单所属商机的会话"
+#: model:ir.model.fields.selection,name:sale_crm.selection__crm_quotation_partner__action__exist
+msgid "Link to an existing customer"
+msgstr "链接到现有客户"
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_sale_order_medium_id
-msgid "Medium"
-msgstr "普通"
+#: model:ir.ui.menu,name:sale_crm.sale_order_menu_quotations_crm
+msgid "My Quotations"
+msgstr "我的报价"
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_member_lines
-msgid "Membership"
-msgstr "会籍"
-
-#. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_membership_amount
-msgid "Membership Amount"
-msgstr "成员费用"
-
-#. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_membership_stop
-msgid "Membership End Date"
-msgstr "会员结束日期"
-
-#. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_membership_start
-msgid "Membership Start Date"
-msgstr "成员开始日期"
-
-#. module: sale_crm
-#: model:ir.ui.view,arch_db:sale_crm.crm_case_form_view_oppor
+#: model_terms:ir.ui.view,arch_db:sale_crm.crm_case_form_view_oppor
 msgid "New Quotation"
-msgstr "新的报价单"
+msgstr "新建报价"
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_crm_lead_sale_number
+#: model:ir.model.fields,field_description:sale_crm.field_crm_lead__quotation_count
 msgid "Number of Quotations"
-msgstr "报价单的数量"
+msgstr "报价的数量"
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_sale_order_opportunity_id
+#: model:ir.model.fields,field_description:sale_crm.field_crm_lead__sale_order_count
+msgid "Number of Sale Orders"
+msgstr "销售订单数量"
+
+#. module: sale_crm
+#: model:ir.model.fields,field_description:sale_crm.field_sale_order__opportunity_id
 msgid "Opportunity"
 msgstr "商机"
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_crm_lead_order_ids
-msgid "Orders"
-msgstr "订单"
+#: model:ir.module.module,shortdesc:base.module_sale_crm
+msgid "Opportunity to Quotation"
+msgstr ""
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_payment_method_ids
-msgid "Payment Methods"
-msgstr "付款方法"
+#: model:ir.model.fields,field_description:sale_crm.field_crm_lead__order_ids
+msgid "Orders"
+msgstr "订单"
 
 #. module: sale_crm
 #: model:ir.actions.act_window,name:sale_crm.sale_action_quotations_new
@@ -204,85 +173,59 @@ msgid "Quotation"
 msgstr "报价"
 
 #. module: sale_crm
-#: model:ir.actions.act_window,name:sale_crm.sale_action_quotations
+#: model:ir.model.fields,field_description:sale_crm.field_crm_quotation_partner__action
+msgid "Quotation Customer"
+msgstr "报价给客户"
+
+#. module: sale_crm
+#: model_terms:ir.ui.view,arch_db:sale_crm.crm_case_form_view_oppor
 msgid "Quotations"
 msgstr "报价"
 
 #. module: sale_crm
+#: model_terms:ir.ui.view,arch_db:sale_crm.crm_lead_merge_summary_inherit_sale_crm
+msgid "Sale Orders"
+msgstr "销售订单"
+
+#. module: sale_crm
+#. odoo-python
+#: code:addons/sale_crm/models/crm_team.py:0
+msgid "Sales Analysis"
+msgstr "销售分析"
+
+#. module: sale_crm
 #: model:ir.model,name:sale_crm.model_sale_order
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_sale_order_ids
 msgid "Sales Order"
 msgstr "销售订单"
 
 #. module: sale_crm
-#: model:ir.model.fields,help:sale_crm.field_res_users_free_member
-msgid "Select if you want to give free membership."
-msgstr "提供免费成员资格"
+#: model:ir.model,name:sale_crm.model_crm_team
+msgid "Sales Team"
+msgstr "销售团队"
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_sale_order_source_id
-msgid "Source"
-msgstr "原文"
+#: model_terms:ir.ui.view,arch_db:sale_crm.crm_quotation_partner_view_form
+msgid "Select a Customer"
+msgstr "选择客户"
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_crm_lead_sale_amount_total
+#: model:ir.model.fields,field_description:sale_crm.field_crm_lead__sale_amount_total
 msgid "Sum of Orders"
 msgstr "销售订单的总数"
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_sale_order_tag_ids
-msgid "Tags"
-msgstr "标签"
+#: model:ir.model.fields,help:sale_crm.field_crm_lead__sale_amount_total
+msgid "Total of Confirmed Orders"
+msgstr ""
 
 #. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_task_ids
-msgid "Tasks"
-msgstr "任务"
+#: model:ir.actions.act_window,name:sale_crm.crm_quotation_partner_action
+#: model_terms:ir.ui.view,arch_db:sale_crm.crm_quotation_partner_view_form
+msgid "Who should be linked to this new Quotation?"
+msgstr ""
 
 #. module: sale_crm
-#: model:ir.model.fields,help:sale_crm.field_res_users_membership_amount
-msgid "The price negotiated by the partner"
-msgstr "客户协商后的价格"
-
-#. module: sale_crm
-#: model:ir.model.fields,help:sale_crm.field_sale_order_campaign_id
-msgid ""
-"This is a name that helps you keep track of your different campaign efforts "
-"Ex: Fall_Drive, Christmas_Special"
-msgstr "这里是一个帮助跟踪您不同市场活动尝试的名称。例如：Fall_Drive，Christmas_Special"
-
-#. module: sale_crm
-#: model:ir.model.fields,help:sale_crm.field_sale_order_medium_id
-msgid "This is the method of delivery. Ex: Postcard, Email, or Banner Ad"
-msgstr "这里是交付的方式。例如： 明信片、 电子邮件、 或横幅广告"
-
-#. module: sale_crm
-#: model:ir.model.fields,help:sale_crm.field_sale_order_source_id
-msgid ""
-"This is the source of the link Ex: Search Engine, another domain, or name of"
-" email list"
-msgstr "这是链接的来源，例如：搜索引擎，其他领域，或者邮件列表名称"
-
-#. module: sale_crm
-#: model:ir.model.fields,help:sale_crm.field_res_users_property_stock_customer
-msgid ""
-"This stock location will be used, instead of the default one, as the "
-"destination location for goods you send to this partner"
-msgstr "这库位替代默认值作为您送货到业务伙伴的目标库位."
-
-#. module: sale_crm
-#: model:ir.model.fields,help:sale_crm.field_res_users_property_stock_supplier
-msgid ""
-"This stock location will be used, instead of the default one, as the source "
-"location for goods you receive from the current partner"
-msgstr "默认作为您接收当前业务伙伴产品的源库位"
-
-#. module: sale_crm
-#: model:ir.model,name:sale_crm.model_res_users
-msgid "Users"
-msgstr "用户"
-
-#. module: sale_crm
-#: model:ir.model.fields,field_description:sale_crm.field_res_users_property_stock_supplier
-msgid "Vendor Location"
-msgstr "供应商位置"
+#. odoo-python
+#: code:addons/sale_crm/wizard/crm_opportunity_to_quotation.py:0
+msgid "You can only apply this action from a lead."
+msgstr "您只能从线索应用此操作。"

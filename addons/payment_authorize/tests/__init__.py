@@ -1,4 +1,9 @@
-# -*- coding: utf-8 -*-
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from openerp.addons.payment_authorize.tests import test_authorize
-
+from . import (
+    common,
+    test_authorize,
+    test_payment_transaction,
+    test_processing_flows,
+    test_refund_flows,
+)

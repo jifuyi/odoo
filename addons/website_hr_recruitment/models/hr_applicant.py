@@ -1,11 +1,24 @@
-# -*- coding: utf-8 -*-
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from openerp.osv import osv
+from odoo import models
+from odoo.exceptions import UserError
 
-class hr_applicant(osv.Model):
+
+class HrApplicant(models.Model):
     _inherit = 'hr.applicant'
 
     def website_form_input_filter(self, request, values):
-        if 'partner_name' in values:
-            values.setdefault('name', '%s\'s Application' % values['partner_name'])
+        if 'partner_id' in values:
+            values.pop('email_from', None)
+            values.pop('partner_phone', None)
+        if values.get('job_id'):
+            job = self.env['hr.job'].browse(values.get('job_id'))
+            if not job.sudo().active:
+                raise UserError(self.env._("The job opportunity has been closed."))
+            stage = self.env['hr.recruitment.stage'].sudo().search([
+                ('fold', '=', False),
+                '|', ('job_ids', '=', False), ('job_ids', '=', values['job_id']),
+            ], order='sequence asc', limit=1)
+            if stage:
+                values['stage_id'] = stage.id
         return values

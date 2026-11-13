@@ -1,72 +1,117 @@
 # -*- coding: utf-8 -*-
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from openerp import http, SUPERUSER_ID
-from openerp.http import request
+import werkzeug.exceptions
+
+from odoo import tools, _
+from odoo.exceptions import UserError
+from odoo.http import route, request
+from odoo.addons.mass_mailing.controllers import main
 
 
-class MassMailController(http.Controller):
+class MassMailController(main.MassMailController):
 
-    @http.route(['/mail/mailing/<int:mailing_id>/unsubscribe'], type='http', website=True, auth='public')
-    def mailing(self, mailing_id, email=None, res_id=None, **post):
-        mailing = request.env['mail.mass_mailing'].sudo().browse(mailing_id)
-        if mailing.exists():
-            if mailing.mailing_model == 'mail.mass_mailing.contact':
-                contacts = request.env['mail.mass_mailing.contact'].sudo().search([('email', 'ilike', email)])
-                return request.website.render('website_mass_mailing.page_unsubscribe', {
-                    'contacts': contacts,
-                    'email': email,
-                    'mailing_id': mailing_id})
-            else:
-                mailing.update_opt_out(mailing_id, email, [res_id], True)
-                return request.website.render('website_mass_mailing.page_unsubscribed')
+    @route('/website_mass_mailing/is_subscriber', type='jsonrpc', website=True, auth='public')
+    def is_subscriber(self, list_id, subscription_type, **post):
+        """Tell whether the visitor is already subscribed to a mailing list.
 
-    @http.route(['/mail/mailing/unsubscribe'], type='json', auth='none')
-    def unsubscribe(self, mailing_id, opt_in_ids, opt_out_ids, email):
-        mailing = request.env['mail.mass_mailing'].sudo().browse(mailing_id)
-        if mailing.exists():
-            mailing.update_opt_out(mailing_id, email, opt_in_ids, False)
-            mailing.update_opt_out(mailing_id, email, opt_out_ids, True)
-
-    @http.route('/website_mass_mailing/is_subscriber', type='json', website=True, auth="public")
-    def is_subscriber(self, list_id, **post):
-        cr, uid, context = request.cr, request.uid, request.context
-        Contacts = request.registry['mail.mass_mailing.contact']
-        Users = request.registry['res.users']
-
+        :param int list_id: the `mailing.list` to check.
+        :param str subscription_type: contact field the subscription is based on, e.g. 'email'.
+        :return: dict with `is_subscriber`, the `value` identifying the visitor (their email
+            address for instance) and `warn_missing_list`, set when the list is gone.
+        :rtype: dict
+        """
+        mailing_list_su = request.env['mailing.list'].browse(int(list_id)).sudo()
+        if request.env.user._is_internal() and not mailing_list_su.exists().active:
+            return {'is_subscriber': False, 'value': '', 'warn_missing_list': True}
+        value = self._get_value(subscription_type)
+        fname = self._get_fname(subscription_type)
         is_subscriber = False
-        email = None
-        if uid != request.website.user_id.id:
-            email = Users.browse(cr, SUPERUSER_ID, uid, context).email
-        elif request.session.get('mass_mailing_email'):
-            email = request.session['mass_mailing_email']
+        if value and fname:
+            contacts_count = request.env['mailing.subscription'].sudo().search_count(
+                [('list_id', 'in', [int(list_id)]), (f'contact_id.{fname}', '=', value), ('opt_out', '=', False)])
+            is_subscriber = contacts_count > 0
 
-        if email:
-            contact_ids = Contacts.search(cr, SUPERUSER_ID, [('list_id', '=', int(list_id)), ('email', '=', email), ('opt_out', '=', False)], context=context)
-            is_subscriber = len(contact_ids) > 0
+        return {'is_subscriber': is_subscriber, 'value': value, 'warn_missing_list': False}
 
-        return {'is_subscriber': is_subscriber, 'email': email}
+    def _get_value(self, subscription_type):
+        value = None
+        if subscription_type == 'email':
+            if not request.env.user._is_public():
+                value = request.env.user.email
+            elif request.session.get('mass_mailing_email'):
+                value = request.session['mass_mailing_email']
+        return value
 
-    @http.route('/website_mass_mailing/subscribe', type='json', website=True, auth="public")
-    def subscribe(self, list_id, email, **post):
-        cr, uid, context = request.cr, request.uid, request.context
-        Contacts = request.registry['mail.mass_mailing.contact']
+    def _get_fname(self, subscription_type):
+        return 'email' if subscription_type == 'email' else ''
 
-        contact_ids = Contacts.search_read(cr, SUPERUSER_ID, [('list_id', '=', int(list_id)), ('email', '=', email)], ['opt_out'], context=context)
-        if not contact_ids:
-            Contacts.add_to_list(cr, SUPERUSER_ID, email, int(list_id), context=context)
+    @route('/website_mass_mailing/subscribe', type='jsonrpc', website=True, auth='public')
+    def subscribe(self, list_id, value, subscription_type, **post):
+        """Subscribe an email or phone number to a mailing list (newsletter signup).
+
+        :param int list_id: id of the `mailing.list` to subscribe to.
+        :param str value: the email address or phone number to subscribe.
+        :param str subscription_type: 'email' or 'mobile', matching the type of `value`.
+        :return: ``{'status': 'success'}``, or ``{'status': 'error', 'content': error message}``
+        :rtype: dict
+        """
+        try:
+            request.env['ir.http']._verify_request_recaptcha_token('website_mass_mailing_subscribe')
+        except UserError as e:
+            return {
+                'status': 'error',
+                'content': str(e),
+            }
+
+        fname = self._get_fname(subscription_type)
+        self.subscribe_to_newsletter(subscription_type, value, list_id, fname)
+        return {'status': 'success'}
+
+    @staticmethod
+    def subscribe_to_newsletter(subscription_type, value, list_id, fname, address_name=None):
+        ContactSubscription = request.env['mailing.subscription'].sudo()
+        Contacts = request.env['mailing.contact'].sudo()
+        MailingList = request.env['mailing.list'].sudo()
+
+        if subscription_type == 'email':
+            name, value = tools.parse_contact_from_email(value)
+            if not name:
+                name = address_name
+            fname_normalized = 'email_normalized'
+        elif subscription_type == 'mobile':
+            name = value
+            fname_normalized = 'phone_sanitized'
         else:
-            if contact_ids[0]['opt_out']:
-                Contacts.write(cr, SUPERUSER_ID, [contact_ids[0]['id']], {'opt_out': False}, context=context)
-        # add email to session
-        request.session['mass_mailing_email'] = email
-        return True
+            raise werkzeug.exceptions.BadRequest(_('Invalid subscription type'))
 
-    @http.route(['/website_mass_mailing/get_content'], type='json', website=True, auth="public")
-    def get_mass_mailing_content(self, newsletter_id, **post):
-        data = self.is_subscriber(newsletter_id, **post)
-        mass_mailing_list = request.registry['mail.mass_mailing.list'].browse(request.cr, SUPERUSER_ID, int(newsletter_id), request.context)
-        data.update({
-            'content': mass_mailing_list.popup_content,
-            'redirect_url': mass_mailing_list.popup_redirect_url
-            })
-        return data
+        # add field to session
+        request.session[f'mass_mailing_{fname}'] = value
+
+        mailing_list = MailingList.browse(int(list_id)).exists()
+        if mailing_list and not request.env.user._is_internal() and not mailing_list.is_public:
+            return {
+                'status': 'error',
+                'content': _("Invalid mailing list."),
+            }
+
+        subscription = ContactSubscription.search(
+            [('list_id', '=', mailing_list.id), (f'contact_id.{fname}', '=', value)], limit=1)
+        if not subscription:
+            if not request.env.user.is_public and request.env.user.partner_id[fname_normalized] == value:
+                partner_id = request.env.user.partner_id.id
+                contacts = mailing_list.sudo()._update_subscription_from_email(value, opt_out=False)
+                contact_id = contacts[:1]
+                if contact_id:
+                    if not contact_id.partner_id:
+                        contact_id.partner_id = partner_id
+                    return
+            else:
+                contact_id = Contacts.search([(fname, '=', value)], limit=1)
+                partner_id = False
+            if not contact_id:
+                contact_id = Contacts.create({'name': name, fname: value, 'partner_id': partner_id})
+            if mailing_list:
+                ContactSubscription.create({'contact_id': contact_id.id, 'list_id': mailing_list.id})
+        elif subscription.opt_out:
+            subscription.opt_out = False
